@@ -4,7 +4,7 @@ A lightweight, browser-based position sizing tool designed for traders who follo
 
 ## 🚀 Live Demo
 
-You can access the live tool here: **[Trading Calculator](https://hossam96.github.io/trading-calculator/)**
+You can access the live tool here: **[Trading Calculator](https://hossam-96.github.io/trading-calculator/)**
 
 ## ✨ Features
 
