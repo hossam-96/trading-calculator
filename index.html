@@ -135,11 +135,37 @@
 
         const riskLevels = [0.1, 0.2, 0.3, 0.4, 0.5, 1, 1.5, 2, 2.5, 3];
 
+        // Load saved values from localStorage
+        function loadSavedValues() {
+            const saved = {
+                netWorth: localStorage.getItem('netWorth'),
+                riskPct: localStorage.getItem('riskPct'),
+                entryPrice: localStorage.getItem('entryPrice'),
+                stopPrice: localStorage.getItem('stopPrice')
+            };
+
+            if (saved.netWorth) document.getElementById('netWorth').value = saved.netWorth;
+            if (saved.riskPct) document.getElementById('riskPct').value = saved.riskPct;
+            if (saved.entryPrice) document.getElementById('entryPrice').value = saved.entryPrice;
+            if (saved.stopPrice) document.getElementById('stopPrice').value = saved.stopPrice;
+        }
+
+        // Save values to localStorage
+        function saveValues() {
+            localStorage.setItem('netWorth', document.getElementById('netWorth').value);
+            localStorage.setItem('riskPct', document.getElementById('riskPct').value);
+            localStorage.setItem('entryPrice', document.getElementById('entryPrice').value);
+            localStorage.setItem('stopPrice', document.getElementById('stopPrice').value);
+        }
+
         function updateCalculations() {
             const netWorth = parseFloat(document.getElementById('netWorth').value) || 0;
             const riskPct = parseFloat(document.getElementById('riskPct').value) || 0;
             const entryPrice = parseFloat(document.getElementById('entryPrice').value) || 0;
             const stopPrice = parseFloat(document.getElementById('stopPrice').value) || 0;
+
+            // Save values whenever calculations update
+            saveValues();
 
             const maxLoss = netWorth * (riskPct / 100);
             document.getElementById('maxLossDisplay').innerText = currencyFormatter.format(maxLoss);
@@ -188,7 +214,10 @@
             }
         }
 
-        window.onload = updateCalculations;
+        window.onload = function() {
+            loadSavedValues();
+            updateCalculations();
+        };
     </script>
 </body>
 </html>
