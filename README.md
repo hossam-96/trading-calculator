@@ -8,8 +8,8 @@ You can access the live tool here: **[Trading Calculator](https://hossam-96.gith
 
 ## ✨ Features
 
-* **Fixed Risk Modeling**: Calculates position sizes based on a specific percentage of your net worth (e.g., the "3% Rule").
-* **Dynamic Matrix**: View a breakdown of recommended position sizes across various stop-loss levels (1% to 30%).
+* **Risk-Based Position Sizing**: Calculates position sizes based on different maximum risk percentages of your net worth (0.1% to 3%).
+* **Dynamic Matrix**: View a breakdown of recommended position sizes across various maximum risk-per-trade levels using your stop-loss from the Quick Calculator.
 * **Quick Trade Calculator**: Input entry and stop-loss prices for specific assets to get the exact share/contract count.
 * **Responsive Design**: Optimized for desktop and mobile use, allowing you to calculate sizes on the go.
 * **Privacy First**: No data is sent to a server. All calculations happen locally in your browser.
@@ -17,15 +17,15 @@ You can access the live tool here: **[Trading Calculator](https://hossam-96.gith
 ## 📈 How It Works
 
 The tool uses the standard risk management formula:
-`Position Size = (Total Net Worth * Risk %) / Stop Loss %`
+`Position Size = (Total Net Worth * Maximum Risk %) / Stop Loss %`
 
-By keeping the "Risk Amount" constant, the tool automatically scales your position size up for tighter stops and down for wider stops, ensuring you never lose more than your predefined limit.
+The Position Sizing Matrix displays different maximum risk percentages (0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 1%, 1.5%, 2%, 2.5%, 3%) and calculates the corresponding position size based on the stop-loss percentage from your Quick Trade Calculator entry (defaults to 5% if not specified).
 
 ## 🛠️ Usage
 
-1. **Global Parameters**: Set your current Net Worth and the maximum % you are willing to lose on a single trade.
+1. **Global Parameters**: Set your current Net Worth and your preferred maximum risk percentage per trade.
 2. **Quick Calculator**: Enter the price of the asset you want to trade and where your technical stop-loss is located.
-3. **The Matrix**: Reference the table to see how different stop-loss percentages affect your buying power.
+3. **The Matrix**: Reference the table to see how different maximum risk percentages affect your position sizes based on your stop-loss level.
 
 ## 💻 Local Development
 
