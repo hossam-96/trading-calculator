@@ -9,10 +9,33 @@
         License: MIT
     -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         .input-group:focus-within label { color: #3b82f6; }
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .metal-mono { font-family: 'JetBrains Mono', monospace; }
+        @keyframes pulse-ring {
+            0%   { box-shadow: 0 0 0 0 rgba(52,211,153,.7); }
+            70%  { box-shadow: 0 0 0 7px rgba(52,211,153,0); }
+            100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); }
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+        .pulse-dot  { animation: pulse-ring 2s ease-out infinite; }
+        .spinning   { animation: spin-slow .7s linear infinite; }
+        .gold-glow  { filter: drop-shadow(0 0 8px rgba(251,191,36,.55)); }
+        .silver-glow { filter: drop-shadow(0 0 8px rgba(148,163,184,.45)); }
+        .metals-grid-bg {
+            background-image: linear-gradient(rgba(148,163,184,.04) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(148,163,184,.04) 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+        #metals-content { animation: fadeIn .4s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans min-h-screen">
@@ -23,6 +46,94 @@
             <h1 class="text-3xl font-bold text-slate-800">Risk Management Calculator</h1>
             <p class="text-slate-500">Calculate position sizes based on your 3% risk rule.</p>
         </header>
+
+        <!-- ── Live Metal Prices ── -->
+        <div class="mb-8">
+            <div class="relative overflow-hidden rounded-2xl metals-grid-bg" style="background: linear-gradient(140deg, #0c1524 0%, #0f1e35 55%, #0a1520 100%); border: 1px solid rgba(255,255,255,.07);">
+
+                <!-- Header row -->
+                <div class="relative flex items-center justify-between px-6 pt-5 pb-0">
+                    <div class="flex items-center gap-2.5">
+                        <span class="pulse-dot inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span class="metal-mono text-[11px] font-semibold text-slate-400 uppercase tracking-[.18em]">Live Metal Prices</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span id="metals-updated" class="metal-mono text-[10px] text-slate-600">—</span>
+                        <button onclick="fetchMetalPrices()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg metal-mono text-[11px] text-slate-400 hover:text-white transition-colors" style="background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09);">
+                            <svg id="refresh-icon" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading -->
+                <div id="metals-loading" class="py-10 flex flex-col items-center gap-3">
+                    <svg class="spinning w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <p class="metal-mono text-[11px] text-slate-600">Fetching live prices…</p>
+                </div>
+
+                <!-- Content -->
+                <div id="metals-content" class="hidden px-6 pb-6 pt-4">
+                    <!-- Exchange rate -->
+                    <div class="flex items-center justify-between rounded-xl px-5 py-3 mb-4" style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);">
+                        <span class="metal-mono text-[10px] text-slate-500 uppercase tracking-widest">USD / EGP Rate</span>
+                        <span id="usd-egp-rate" class="metal-mono text-xl font-bold text-white tabular-nums">—</span>
+                    </div>
+
+                    <!-- Gold + Silver cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <!-- Gold -->
+                        <div class="rounded-xl p-5" style="background:linear-gradient(135deg,rgba(251,191,36,.11) 0%,rgba(245,158,11,.05) 100%); border:1px solid rgba(251,191,36,.22);">
+                            <div class="flex items-center gap-2 mb-4">
+                                <span class="text-xl gold-glow" style="color:#fbbf24;">◈</span>
+                                <div>
+                                    <p class="metal-mono text-xs font-bold text-amber-300 uppercase tracking-widest">Gold</p>
+                                    <p class="metal-mono text-[9px] text-amber-600 uppercase tracking-wider">24 Karat · GC=F</p>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-baseline">
+                                    <span class="metal-mono text-[10px] text-amber-700 uppercase tracking-wider">Global / oz</span>
+                                    <span id="gold-usd" class="metal-mono text-lg font-semibold text-amber-200 tabular-nums">—</span>
+                                </div>
+                                <div class="flex justify-between items-baseline border-t pt-3" style="border-color:rgba(251,191,36,.12);">
+                                    <span class="metal-mono text-[10px] text-amber-700 uppercase tracking-wider">Local / gram</span>
+                                    <span id="gold-egp" class="metal-mono text-2xl font-bold text-amber-300 tabular-nums">—</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Silver -->
+                        <div class="rounded-xl p-5" style="background:linear-gradient(135deg,rgba(148,163,184,.11) 0%,rgba(100,116,139,.05) 100%); border:1px solid rgba(148,163,184,.2);">
+                            <div class="flex items-center gap-2 mb-4">
+                                <span class="text-xl silver-glow" style="color:#94a3b8;">◇</span>
+                                <div>
+                                    <p class="metal-mono text-xs font-bold text-slate-300 uppercase tracking-widest">Silver</p>
+                                    <p class="metal-mono text-[9px] text-slate-600 uppercase tracking-wider">Pure · SI=F</p>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-baseline">
+                                    <span class="metal-mono text-[10px] text-slate-600 uppercase tracking-wider">Global / oz</span>
+                                    <span id="silver-usd" class="metal-mono text-lg font-semibold text-slate-300 tabular-nums">—</span>
+                                </div>
+                                <div class="flex justify-between items-baseline border-t pt-3" style="border-color:rgba(148,163,184,.12);">
+                                    <span class="metal-mono text-[10px] text-slate-600 uppercase tracking-wider">Local / gram</span>
+                                    <span id="silver-egp" class="metal-mono text-2xl font-bold text-slate-200 tabular-nums">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error -->
+                <div id="metals-error" class="hidden py-10 flex flex-col items-center gap-2">
+                    <svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <p id="metals-error-msg" class="metal-mono text-[11px] text-red-400 text-center px-6">Could not fetch live prices.</p>
+                </div>
+            </div>
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
@@ -214,9 +325,64 @@
             }
         }
 
+        const TROY_OZ_TO_GRAMS = 31.1035;
+
+        async function fetchMetalPrices() {
+            const loadingEl = document.getElementById('metals-loading');
+            const contentEl = document.getElementById('metals-content');
+            const errorEl   = document.getElementById('metals-error');
+            const icon      = document.getElementById('refresh-icon');
+
+            loadingEl.classList.remove('hidden');
+            contentEl.classList.add('hidden');
+            errorEl.classList.add('hidden');
+            icon.classList.add('spinning');
+
+            const tickers = { Gold: 'GC=F', Silver: 'SI=F', USD_EGP: 'EGP=X' };
+            const results = {};
+            // Yahoo Finance blocks direct browser requests; route through a CORS proxy
+            const PROXY = 'https://corsproxy.io/?';
+            const YF_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+
+            try {
+                for (const [name, ticker] of Object.entries(tickers)) {
+                    const url  = PROXY + encodeURIComponent(YF_BASE + ticker);
+                    const res  = await fetch(url);
+                    const data = await res.json();
+                    results[name] = data.chart.result[0].meta.regularMarketPrice;
+                }
+
+                const goldEgpGram   = (results.Gold   / TROY_OZ_TO_GRAMS) * results.USD_EGP;
+                const silverEgpGram = (results.Silver / TROY_OZ_TO_GRAMS) * results.USD_EGP;
+
+                document.getElementById('usd-egp-rate').textContent = results.USD_EGP.toFixed(2);
+                document.getElementById('gold-usd').textContent     = `$${results.Gold.toFixed(2)}`;
+                document.getElementById('gold-egp').textContent     = `${goldEgpGram.toFixed(2)} EGP`;
+                document.getElementById('silver-usd').textContent   = `$${results.Silver.toFixed(2)}`;
+                document.getElementById('silver-egp').textContent   = `${silverEgpGram.toFixed(2)} EGP`;
+
+                document.getElementById('metals-updated').textContent =
+                    `Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+                loadingEl.classList.add('hidden');
+                contentEl.classList.remove('hidden');
+            } catch (e) {
+                console.error('Metal prices error:', e);
+                document.getElementById('metals-error-msg').textContent = `Error: ${e.message}`;
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+            } finally {
+                icon.classList.remove('spinning');
+            }
+        }
+
+        // Auto-refresh every 60 seconds
+        setInterval(fetchMetalPrices, 60000);
+
         window.onload = function() {
             loadSavedValues();
             updateCalculations();
+            fetchMetalPrices();
         };
     </script>
 </body>
