@@ -56,6 +56,7 @@
                     <div class="flex items-center gap-2.5">
                         <span class="pulse-dot inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
                         <span class="metal-mono text-[11px] font-semibold text-slate-400 uppercase tracking-[.18em]">Live Metal Prices</span>
+                        <span id="stale-badge" class="hidden rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-1 metal-mono text-[9px] font-semibold uppercase tracking-[.18em] text-amber-300">Stale Data</span>
                     </div>
                     <div class="flex items-center gap-3">
                         <span id="metals-updated" class="metal-mono text-[10px] text-slate-600">—</span>
@@ -326,6 +327,57 @@
         }
 
         const TROY_OZ_TO_GRAMS = 31.1035;
+        const METALS_CACHE_KEY = 'metalPricesCache';
+
+        async function fetchJson(url, timeoutMs = 6000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return await response.json();
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
+        function readMetalsCache() {
+            try {
+                const cached = localStorage.getItem(METALS_CACHE_KEY);
+                return cached ? JSON.parse(cached) : null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function writeMetalsCache(payload) {
+            try {
+                localStorage.setItem(METALS_CACHE_KEY, JSON.stringify(payload));
+            } catch (_) {
+                // Ignore storage failures.
+            }
+        }
+
+        function renderMetalPrices(payload, isCached = false) {
+            const { goldUsd, silverUsd, usdEgp, updatedAt } = payload;
+            const goldEgpGram = (goldUsd / TROY_OZ_TO_GRAMS) * usdEgp;
+            const silverEgpGram = (silverUsd / TROY_OZ_TO_GRAMS) * usdEgp;
+            const staleBadge = document.getElementById('stale-badge');
+
+            document.getElementById('usd-egp-rate').textContent = usdEgp.toFixed(2);
+            document.getElementById('gold-usd').textContent = `$${goldUsd.toFixed(2)}`;
+            document.getElementById('gold-egp').textContent = `${goldEgpGram.toFixed(2)} EGP`;
+            document.getElementById('silver-usd').textContent = `$${silverUsd.toFixed(2)}`;
+            document.getElementById('silver-egp').textContent = `${silverEgpGram.toFixed(2)} EGP`;
+            staleBadge.classList.toggle('hidden', !isCached);
+
+            const label = isCached ? 'Cached' : 'Updated';
+            const timeText = new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('metals-updated').textContent = `${label} ${timeText}`;
+        }
 
         async function fetchMetalPrices() {
             const loadingEl = document.getElementById('metals-loading');
@@ -338,39 +390,38 @@
             errorEl.classList.add('hidden');
             icon.classList.add('spinning');
 
-            const tickers = { Gold: 'GC=F', Silver: 'SI=F', USD_EGP: 'EGP=X' };
-            const results = {};
-            // Yahoo Finance blocks direct browser requests; route through a CORS proxy
-            const PROXY = 'https://corsproxy.io/?';
-            const YF_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart/';
-
             try {
-                for (const [name, ticker] of Object.entries(tickers)) {
-                    const url  = PROXY + encodeURIComponent(YF_BASE + ticker);
-                    const res  = await fetch(url);
-                    const data = await res.json();
-                    results[name] = data.chart.result[0].meta.regularMarketPrice;
-                }
+                const [goldData, silverData, fxData] = await Promise.all([
+                    fetchJson('https://api.gold-api.com/price/XAU'),
+                    fetchJson('https://api.gold-api.com/price/XAG'),
+                    fetchJson('https://open.er-api.com/v6/latest/USD')
+                ]);
 
-                const goldEgpGram   = (results.Gold   / TROY_OZ_TO_GRAMS) * results.USD_EGP;
-                const silverEgpGram = (results.Silver / TROY_OZ_TO_GRAMS) * results.USD_EGP;
+                const payload = {
+                    goldUsd: goldData.price,
+                    silverUsd: silverData.price,
+                    usdEgp: fxData.rates.EGP,
+                    updatedAt: goldData.updatedAt || new Date().toISOString()
+                };
 
-                document.getElementById('usd-egp-rate').textContent = results.USD_EGP.toFixed(2);
-                document.getElementById('gold-usd').textContent     = `$${results.Gold.toFixed(2)}`;
-                document.getElementById('gold-egp').textContent     = `${goldEgpGram.toFixed(2)} EGP`;
-                document.getElementById('silver-usd').textContent   = `$${results.Silver.toFixed(2)}`;
-                document.getElementById('silver-egp').textContent   = `${silverEgpGram.toFixed(2)} EGP`;
-
-                document.getElementById('metals-updated').textContent =
-                    `Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                renderMetalPrices(payload);
+                writeMetalsCache(payload);
 
                 loadingEl.classList.add('hidden');
                 contentEl.classList.remove('hidden');
             } catch (e) {
                 console.error('Metal prices error:', e);
-                document.getElementById('metals-error-msg').textContent = `Error: ${e.message}`;
-                loadingEl.classList.add('hidden');
-                errorEl.classList.remove('hidden');
+                const cached = readMetalsCache();
+
+                if (cached) {
+                    renderMetalPrices(cached, true);
+                    loadingEl.classList.add('hidden');
+                    contentEl.classList.remove('hidden');
+                } else {
+                    document.getElementById('metals-error-msg').textContent = `Error: ${e.message}`;
+                    loadingEl.classList.add('hidden');
+                    errorEl.classList.remove('hidden');
+                }
             } finally {
                 icon.classList.remove('spinning');
             }
